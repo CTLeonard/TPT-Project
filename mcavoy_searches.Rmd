@@ -1,0 +1,139 @@
+---
+title: "tpt_project"
+author: "Matthew McAvoy"
+date: "March 30, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Finding top onehundred from first mrjob run
+
+Knowing what people are searching for allows tpt to better serve their base by adding products related to the most common searches.
+
+## Grab top onehundred queries
+
+Goal is to find the top ten queries among total data.
+
+Used map-reduce to count number of searches in total tpt_data. The searches had to match exactly to map to the same reducer. Trying to do fuzzy text search at this stage was time-intensive and chose to reduce size of possible matches. By limiting the number of matches, found much fuzzy matches much faster.
+
+This part writes a csv of the top one-hundred exact matches. The idea is that with fuzzy matching, the top ten will be among this set.
+
+```{r, include=FALSE}
+library(tidyverse)
+setwd("C:/Users/homur/OneDrive/New College/Distributed Computing/tpt_project")
+
+data <- read.csv("small8_tpt_result.csv", header=FALSE)
+large_data <- read.csv("long8_word_count.csv", header=FALSE)
+names(data) <- c("Time", "Word", "Count")
+names(large_data) <- c("Time", "Word", "Count")
+
+data$Time <- as.Date(data$Time)
+```
+
+```{r}
+dim(data); dim(large_data)
+```
+
+```{r}
+top_onehundred <- large_data %>% arrange(desc(Count)) %>% slice(1:100)
+```
+
+```{r}
+write.csv(top_onehundred, file="Top_onehundred_queries.csv", row.names=FALSE, quote=FALSE)
+```
+
+----------------------------------------------------------------------
+
+## After fuzyywuzzy text matching from second mrjob run
+
+Ran fuzzy search of total tpt_data to match among one hundred terms. If it was similar by about 75%, then it was paired, and counted total number of matches. For example, two exact searches that weren't paired before, 'Dr. Seuss', and 'Dr. Seuss Day' has a closeness greater than 75, and so will increase 'Dr. Seuss' term by count of 'Dr. Seuss Day'.
+
+
+
+```{r, include=FALSE}
+library(tidyverse)
+setwd("C:/Users/homur/OneDrive/New College/Distributed Computing/tpt_project")
+s2 <- read.csv("long8_word_match.csv", header=FALSE)
+names(s2) <- c("Word", "Count")
+```
+
+Word matching using fuzzywuzzy (word distance > 75%) of top one hundred queries (used R to sort and wrote to csv) reduced similar matches 100 > 57. 
+
+## top ten
+
+```{r}
+top_ten <- s2 %>% arrange(desc(Count)) %>% slice(1:10)
+top_ten
+```
+
+Can plot top ten.
+
+```{r}
+order_x <- c("horton hears a who", "homophones", "green eggs and ham", "writing prompts", "writing paper", "graphing", "Word", "geometry", "free", "fractions")
+
+ggplot(data=top_ten, aes(x=Word, y=Count, fill=Word)) + geom_bar(stat="identity") + scale_x_discrete(limits = order_x) + theme_classic() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(title="Number of queries over total timeframe")
+```
+
+Will run another map reduce to find frequency of top ten by day.
+
+```{r}
+top_ten_words <- top_ten %>% select(Word)
+write.csv(top_ten_words, file="Top_ten_queries.csv",
+          row.names=FALSE, quote=FALSE)
+```
+
+
+----------------------------------------------------------------------
+
+## Frequency of words by day
+
+Aim to see how top ten words average by day in the month given. Used map-reduce to yield (day, fuzzy-match) where closeness is again > 75%.
+
+```{r}
+library(tidyverse)
+setwd("C:/Users/homur/OneDrive/New College/Distributed Computing/tpt_project")
+s2_engine <- read.csv("long8_top_time.csv", header=FALSE)
+names(s2_engine) <- c("Date", "Search", "Count")
+s2_engine$Date <- as.Date(s2_engine$Date)
+s2_engine$Search <- factor(s2_engine$Search)
+```
+
+Graphing time series
+
+```{r}
+order_x <- c("Word", "free", "green eggs and ham", "fractions", "writing prompts", "writing paper", "horton hears a who", "geometry", "graphing", "homophones")
+#color_x <- colorRampPalette(c("royalblue", "springgreen"))
+color_x <- c("#4169E1", "#3979D6", "#328ACB", "#2B9BC0", "#24ABB5", "#1CBCAA", "#15CD9F", "coral3", "#07EE89", "#00FF7F") #royalblue to springgreen
+
+ggplot(data=s2_engine, aes(x=Date, y=Count)) +
+  geom_line(aes(color=Search)) + theme_minimal() +
+  scale_color_manual(values = color_x, labels = order_x, name="Legend Box") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(title="Number of searches by day")
+```
+
+
+To order the legend box, need to manually adjust it. For some reason, colors between the plot and the legend box don't match. Currently troubleshooting. This site is really close to correctly plotting manual colors - http://stackoverflow.com/questions/14077274/ggplot2-manually-specifying-color-linetype-duplicate-legend
+
+## plot last day
+
+```{r}
+last_day <- s2_engine %>% filter(Date==as.Date("2016-03-04"))
+biggest_day <- s2_engine %>% filter(Date==as.Date("2016-02-29"))
+geometry_days <- s2_engine %>% filter(Search=="geometry")
+
+# points of last day
+ggplot(data=biggest_day, aes(x=Date, y=Count, color=Search)) + geom_point()
+
+# geometry line
+ggplot(data=geometry_days, aes(x=Date, y=Count, color=Search)) +
+  geom_line() + geom_point() + theme_minimal() 
+```
+
+
+
+
+
