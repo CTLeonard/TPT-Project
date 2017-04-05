@@ -1,0 +1,49 @@
+---
+title: "plot_frequency"
+author: "Matthew McAvoy"
+date: "April 5, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 
+
+```{r, include=FALSE}
+library(tidyverse)
+setwd("C:/Users/homur/OneDrive/New College/Distributed Computing/tpt_project")
+
+data <- read.csv("word_result3.csv", header=FALSE)
+names(data) <- c("Date", "Search", "indiv_count")
+data$Date <- as.Date(data$Date)
+data$Search <- tolower(factor(data$Search))
+```
+
+Get initial query
+
+```{r}
+initial_query <- read_file("single_query.txt")
+```
+
+Get the unique terms that matched the query.
+
+```{r}
+unique_terms <- unique(data$Search)
+#View(as.data.frame(unique_terms)
+```
+
+```{r}
+data_days <- data %>% group_by(Date) %>% summarise(Count = sum(indiv_count))
+data_days$Search <- initial_query
+```
+
+```{r}
+#ggplot(data=data, aes(x=Date, y=Count, color=Search)) + geom_point()
+
+# geometry line
+ggplot(data=data_days, aes(x=Date, y=Count, color=Search)) +
+  geom_line() + geom_point() + theme_minimal() + labs(title="Frequency of query")
+```
+
