@@ -1,0 +1,145 @@
+---
+title: "TPT pipeline"
+author: "Nicole Navarro"
+date: "April 10, 2017"
+output: pdf_document
+---
+
+```{r}
+clean_no_time <- function(data){
+  
+  names(data) <- c("Time","Grade","Count" )
+
+  data$Grade = sub( '.\"' , "", data$Grade)
+  data$Grade = sub( '.,','', data$Grade)
+
+  data$Count = sub(']', '' , data$Count)
+  data$Count = as.integer(data$Count)
+
+  data$Time = as.Date(data$Time)
+  
+  return(data)
+}
+
+dayCounts <- read.table('~/School/Spring 16/distributed computing/TPT/day_results.txt')
+dayCounts <- clean_no_time(dayCounts)
+
+none <- dayCounts[which(dayCounts$Grade == 'none'),]
+not_none <- dayCounts[which(dayCounts$Grade != 'none'),]
+bigGrades <- not_none %>% group_by(Grade) %>%  top_n(5)
+
+
+ggplot(not_none, aes(x=Time, y=Count)) +
+  geom_line(aes(color=Grade)) +
+  theme_bw() 
+
+ggplot(bigGrades, aes(x=Time, y=Count)) +
+  geom_line(aes(group = Grade,color=Grade)) +
+  theme_bw() 
+
+ggplot(none, aes(x=Time, y=Count)) +
+  geom_line() +
+  theme_bw() 
+
+
+
+```
+
+```{r}
+
+
+clean_time <- function(data){
+  
+  names(data) <- c("Time","Grade","Count" )
+
+  data$Grade = sub( '.\"' , "", data$Grade)
+  data$Grade = sub( '.,','', data$Grade)
+
+  data$Count = sub(']', '' , data$Count)
+  data$Count = as.integer(data$Count)
+  
+  data$Time <- as.POSIXct(data$Time,tz = 'UTC')
+  attributes(data$Time)$tzone <- 'EST'
+  
+  data$Day <- as.Date(data$Time,tz='EST')
+  data$Time <- sub('....-..-.. ', '', data$Time)
+  data$Time <- sub(' EST', '', data$Time)
+  
+  
+  return(data)
+}
+
+hourCounts <- read.table('~/School/Spring 16/distributed computing/TPT/hour_results.txt')
+hourCounts <- clean_time(hourCounts)
+
+
+
+none <- hourCounts[which(hourCounts$Grade == 'none'),]
+
+Elementary <- hourCounts[(which(hourCounts$Grade == 'kindergarten' |hourCounts$Grade == 'first' | hourCounts$Grade == 'second' | hourCounts$Grade == 'third')),]
+
+not_none <- hourCounts[which(hourCounts$Grade != 'none'),]
+
+
+ggplot(none, aes(x=Time, y=Count)) +
+  geom_line(aes(group=Grade)) +
+  facet_grid(Day~.) +
+  theme_bw()
+
+ggplot(not_none, aes(x=Time, y=Count)) +
+  geom_line(aes(group=Grade,color = Grade)) +
+  facet_grid(Day~.) +
+  theme_bw()
+
+```
+
+```{r}
+
+
+clean_time <- function(data){
+  
+  names(data) <- c("Time","Grade","Count" )
+
+  data$Grade = sub( '.\"' , "", data$Grade)
+  data$Grade = sub( '.,','', data$Grade)
+
+  data$Count = sub(']', '' , data$Count)
+  data$Count = as.integer(data$Count)
+  
+  data$Time <- as.POSIXct(data$Time,tz = 'UTC')
+  attributes(data$Time)$tzone <- 'EST'
+  
+  data$Day <- as.Date(data$Time,tz='EST')
+  data$Time <- sub('....-..-.. ', '', data$Time)
+  data$Time <- sub(' EST', '', data$Time)
+  
+  
+  return(data)
+}
+
+tenMinuteCounts <- read.table('~/School/Spring 16/distributed computing/TPT/ten_minute_results.txt')
+tenMinuteCounts <- clean_time(tenMinuteCounts)
+
+none <- hourCounts[which(hourCounts$Grade == 'none'),]
+
+Elementary <- hourCounts[(which(hourCounts$Grade == 'kindergarten' |hourCounts$Grade == 'first' | hourCounts$Grade == 'second' | hourCounts$Grade == 'third')),]
+
+not_none <- hourCounts[which(hourCounts$Grade != 'none'),]
+
+
+ggplot(none, aes(x=Time, y=Count)) +
+  geom_line(aes(group=Grade)) +
+  facet_grid(Day~.) +
+  theme_bw()
+
+ggplot(not_none, aes(x=Time, y=Count)) +
+  geom_line(aes(group=Grade,color = Grade)) +
+  facet_grid(Day~.) +
+  theme_bw()
+
+ggplot(Elementary, aes(x=Time, y=Count)) +
+  geom_line(aes(group=Grade,color = Grade)) +
+  facet_grid(Day~.) +
+  theme_bw()
+
+```
